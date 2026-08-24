@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Feed Sieve</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="shell" aria-busy="true">
+      <header class="hero">
+        <div>
+          <p class="eyebrow" data-i18n="localOnly">Local only</p>
+          <h1 data-i18n="extensionName">Feed Sieve</h1>
+        </div>
+        <span class="version" id="version"></span>
+      </header>
+
+      <p class="status" id="page-status" role="status" aria-live="polite"></p>
+
+      <fieldset id="quick-settings" disabled>
+        <legend data-i18n="quickSettings">Quick settings</legend>
+        <label class="toggle master">
+          <span>
+            <strong data-i18n="enabledName">Enable cleaner</strong>
+            <small data-i18n="enabledDescription">Apply enabled rules on Facebook.</small>
+          </span>
+          <input type="checkbox" data-setting="enabled" />
+        </label>
+        <label class="toggle">
+          <span data-i18n="removeSponsoredName">Sponsored content</span>
+          <input type="checkbox" data-setting="removeSponsored" />
+        </label>
+        <label class="toggle">
+          <span data-i18n="removeReelsName">Reels</span>
+          <input type="checkbox" data-setting="removeReels" />
+        </label>
+        <label class="toggle">
+          <span data-i18n="removeSuggestedName">Suggested posts</span>
+          <input type="checkbox" data-setting="removeSuggested" />
+        </label>
+      </fieldset>
+
+      <section class="stats" aria-labelledby="stats-title">
+        <div class="section-heading">
+          <h2 id="stats-title" data-i18n="localStats">Local statistics</h2>
+          <span data-i18n="sinceInstall">Since install</span>
+        </div>
+        <div class="stat-grid">
+          <div><strong id="stat-total">0</strong><span data-i18n="totalHidden">Total</span></div>
+          <div><strong id="stat-sponsored">0</strong><span data-i18n="sponsoredShort">Sponsored</span></div>
+          <div><strong id="stat-reels">0</strong><span data-i18n="reelsShort">Reels</span></div>
+          <div><strong id="stat-suggested">0</strong><span data-i18n="suggestedShort">Suggested</span></div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button class="primary" id="rescan" type="button" disabled data-i18n="rescan">Rescan page</button>
+        <button class="secondary" id="open-options" type="button" data-i18n="allSettings">All settings</button>
+      </div>
+      <p class="save-status" id="save-status" role="status" aria-live="polite"></p>
+    </main>
+
+    <script src="../shared/defaults.js"></script>
+    <script src="../shared/storage.js"></script>
+    <script src="../shared/messages.js"></script>
+    <script src="../shared/i18n.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

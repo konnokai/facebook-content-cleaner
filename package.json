@@ -1,0 +1,9 @@
+{
+  "name": "feed-sieve",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "check": "node scripts/check.mjs"
+  }
+}

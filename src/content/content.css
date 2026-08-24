@@ -1,0 +1,24 @@
+.fcc-hidden {
+  display: none !important;
+}
+
+.fcc-placeholder {
+  box-sizing: border-box;
+  width: min(100%, 680px);
+  margin: 10px auto;
+  padding: 10px 14px;
+  border: 1px dashed #8a96a8;
+  border-radius: 10px;
+  color: #596579;
+  background: #f5f7fa;
+  font: 13px/1.4 system-ui, sans-serif;
+  text-align: center;
+}
+
+@media (prefers-color-scheme: dark) {
+  .fcc-placeholder {
+    border-color: #687386;
+    color: #b7c0cf;
+    background: #252a31;
+  }
+}
