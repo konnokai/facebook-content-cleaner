@@ -50,9 +50,22 @@
     return normalizeText(values.join(" "));
   }
 
+  function isContentReelLink(link) {
+    const href = normalizeText(link.getAttribute("href"));
+    return (
+      !link.closest("nav, [role='navigation'], [role='tablist'], [role='tab']") &&
+      /\/reels?(?:\/|\?|$)/.test(href) &&
+      !/[?&](?:comment_id|reply_comment_id)=/.test(href)
+    );
+  }
+
   function collectSignals(element, locationLike) {
     const role = normalizeText(element.getAttribute("role"));
-    const hrefs = collectAttributeValues(element, "a[href]", "href");
+    const links = [
+      ...(element.matches?.("a[href]") ? [element] : []),
+      ...element.querySelectorAll("a[href]"),
+    ];
+    const hrefs = links.map((link) => normalizeText(link.getAttribute("href"))).filter(Boolean);
     const labelsFound = collectAttributeValues(element, "[aria-label]", "aria-label");
     const headerText = collectText(element, "header, h1, h2, h3, h4, [role='heading']");
     const headerLabels = collectAttributeValues(
@@ -77,7 +90,7 @@
       hrefs,
       isArticle: role === "article",
       isDialog: role === "dialog" || role === "menu",
-      hasReelLink: hrefs.some((href) => /\/reels?(?:\/|\?|$)/.test(href)),
+      hasReelLink: links.some(isContentReelLink),
       hasAdLink: hrefs.some((href) => /\/(?:ads|ad_center)(?:\/|\?|$)/.test(href)),
     };
   }
@@ -221,6 +234,7 @@
   Object.assign(FCC, {
     collectSignals,
     findMatchingRule,
+    isContentReelLink,
     labels,
     markCounted,
     normalizeText,

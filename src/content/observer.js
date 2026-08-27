@@ -18,6 +18,17 @@
     suggested: "removeSuggested",
   });
 
+  // A friend Reel may be hidden before the MAIN-world marker arrives.
+  function shouldSkipMarkedChild(candidate, markedTarget, markedKind, settings) {
+    if (!markedTarget || markedTarget === candidate) return false;
+    const ruleKey = markerRuleKeys[markedKind];
+    return Boolean(
+      ruleKey &&
+        settings[ruleKey] &&
+        !(markedKind === "friend-reel" && settings.allowFriendsReels),
+    );
+  }
+
   function getHideTarget(element) {
     return (
       element.closest(
@@ -86,8 +97,7 @@
         // A child link inside a marked card must not restore the card.
         const markedTarget = candidate.closest("[data-fcc-facebook-kind]");
         const markedKind = markedTarget?.dataset.fccFacebookKind;
-        const markedRuleKey = markerRuleKeys[markedKind];
-        if (markedTarget && markedTarget !== candidate && markedRuleKey && settings[markedRuleKey]) {
+        if (shouldSkipMarkedChild(candidate, markedTarget, markedKind, settings)) {
           continue;
         }
         const friendReel = candidate.closest("[data-fcc-facebook-kind='friend-reel']");
@@ -148,5 +158,6 @@
     createContentObserver,
     createScanner,
     getHideTarget,
+    shouldSkipMarkedChild,
   });
 })(globalThis);

@@ -19,12 +19,12 @@
     return "";
   }
 
-  function hasSuggestedProfileAction(element) {
+  function hasSuggestedProfileAction(element, locationLike) {
     const profiles = [
       ...(element?.querySelectorAll("[data-ad-rendering-role='profile_name']") || []),
       ...(element?.querySelectorAll("header") || []),
     ];
-    return profiles.some((profile) =>
+    const hasAction = profiles.some((profile) =>
       ["[role='button']", "button", "a"].some((selector) =>
         [...profile.querySelectorAll(selector)].some((action) =>
           /^(加入|追蹤|join|follow)$/i.test(
@@ -32,6 +32,19 @@
           ),
         ),
       ),
+    );
+    if (!hasAction) return false;
+
+    // Follow and join actions are normal on posts inside the group currently open.
+    const currentGroupPath = String(locationLike?.pathname || "").match(
+      /^\/groups\/[^/]+/,
+    )?.[0];
+    if (!currentGroupPath) return true;
+    return !profiles.some((profile) =>
+      [...profile.querySelectorAll("a[href]")].some((link) => {
+        const path = String(link.pathname || "").replace(/\/+$/, "");
+        return path === currentGroupPath || path.startsWith(`${currentGroupPath}/`);
+      }),
     );
   }
 
@@ -98,7 +111,7 @@
         const kind =
           (hasResharedReel(fiber) ? "friend-reel" : "") ||
           classifyFeedUnit(props?.feedUnit, props?.unitTypename) ||
-          (hasSuggestedProfileAction(element) ? "suggested" : "");
+          (hasSuggestedProfileAction(element, location) ? "suggested" : "");
         const target = getMarkerTarget(element);
         if (target && kind) marked.set(target, kind);
       }

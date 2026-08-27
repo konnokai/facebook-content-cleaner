@@ -5,6 +5,7 @@ import test from "node:test";
 await import("../src/shared/defaults.js");
 await import("../src/shared/storage.js");
 await import("../src/content/rules.js");
+await import("../src/content/observer.js");
 
 const FCC = globalThis.FCC;
 const fixtureDirectory = new URL("./fixtures/", import.meta.url);
@@ -23,7 +24,10 @@ function parseFixtures(source) {
   for (const match of source.matchAll(pattern)) {
     const [, , outerAttributes, name, inner] = match;
     const whole = `${outerAttributes}>${inner}`;
-    const hrefs = [...whole.matchAll(/href="([^"]+)"/gi)].map((value) => FCC.normalizeText(value[1]));
+    const links = [...whole.matchAll(/<a\b([^>]*)>/gi)]
+      .map((value) => ({ attributes: value[1], href: attribute(value[1], "href") }))
+      .filter((link) => link.href);
+    const hrefs = links.map((link) => FCC.normalizeText(link.href));
     const labels = [...whole.matchAll(/aria-label="([^"]+)"/gi)].map((value) => FCC.normalizeText(value[1]));
     const headers = [...inner.matchAll(/<(?:header|h[1-4])[^>]*>([\s\S]*?)<\/(?:header|h[1-4])>/gi)];
     const headerSource = headers.map((value) => value[1]).join(" ");
@@ -41,7 +45,12 @@ function parseFixtures(source) {
       hrefs,
       isArticle: FCC.normalizeText(attribute(outerAttributes, "role")) === "article",
       isDialog: ["dialog", "menu"].includes(FCC.normalizeText(attribute(outerAttributes, "role"))),
-      hasReelLink: hrefs.some((href) => /\/reels?(?:\/|\?|$)/.test(href)),
+      hasReelLink: hrefs.some(
+        (href, index) =>
+          /\/reels?(?:\/|\?|$)/.test(href) &&
+          !/\brole=["']tab["']/i.test(links[index].attributes) &&
+          !/[?&](?:comment_id|reply_comment_id)=/.test(href),
+      ),
       hasAdLink: hrefs.some((href) => /\/(?:ads|ad_center)(?:\/|\?|$)/.test(href)),
     });
   }
@@ -102,6 +111,29 @@ test("Reel navigation links are not hidden", () => {
   assert.equal(FCC.findMatchingRule(signals, settingsFor("removeReels")), null);
 });
 
+test("Reel tabs are not treated as content links", () => {
+  const tab = {
+    getAttribute: () => "/reel/?s=tab",
+    closest: () => tab,
+  };
+  const content = {
+    getAttribute: () => "/reel/102",
+    closest: () => null,
+  };
+
+  assert.equal(FCC.isContentReelLink(tab), false);
+  assert.equal(FCC.isContentReelLink(content), true);
+});
+
+test("Reel comment permalinks do not hide comment articles", () => {
+  const settings = settingsFor("removeReels");
+  assert.equal(
+    FCC.findMatchingRule(positive.get("removeReelsWithComment"), settings)?.key,
+    "removeReels",
+  );
+  assert.equal(FCC.findMatchingRule(negative.get("removeReelsComment"), settings), null);
+});
+
 test("Facebook suggested markers take priority over generic section labels", () => {
   const settings = {
     ...FCC.defaultSettings,
@@ -131,5 +163,31 @@ test("allowFriendsReels keeps a marked reshared Reel", () => {
   assert.equal(
     FCC.findMatchingRule(signals, settingsFor("removeReels", { allowFriendsReels: false }))?.key,
     "removeReels",
+  );
+});
+
+test("retained friend Reel children are restored instead of skipped", () => {
+  const parent = {};
+  const child = {};
+  assert.equal(
+    FCC.shouldSkipMarkedChild(child, parent, "friend-reel", {
+      removeReels: true,
+      allowFriendsReels: true,
+    }),
+    false,
+  );
+  assert.equal(
+    FCC.shouldSkipMarkedChild(child, parent, "friend-reel", {
+      removeReels: true,
+      allowFriendsReels: false,
+    }),
+    true,
+  );
+  assert.equal(
+    FCC.shouldSkipMarkedChild(child, parent, "suggested", {
+      removeSuggested: true,
+      allowFriendsReels: true,
+    }),
+    true,
   );
 });
