@@ -17,6 +17,8 @@
     sponsored: "removeSponsored",
     suggested: "removeSuggested",
   });
+  const sectionBoundarySelector = "main, [role='main'], body";
+  const sectionHeadingSelector = "header, h1, h2, h3, h4, [role='heading']";
 
   // A friend Reel may be hidden before the MAIN-world marker arrives.
   function shouldSkipMarkedChild(candidate, markedTarget, markedKind, settings) {
@@ -29,8 +31,35 @@
     );
   }
 
+  /** Finds the card shell Facebook renders around a labelled section and its sibling heading. */
+  function getSectionHideTarget(element) {
+    if (!element.matches?.("[role='region'][aria-label]")) return null;
+
+    let child = element;
+    for (
+      let parent = element.parentElement;
+      parent && !parent.matches(sectionBoundarySelector);
+      child = parent, parent = parent.parentElement
+    ) {
+      const hasSiblingHeading = [...parent.children].some(
+        (sibling) =>
+          sibling !== child &&
+          (sibling.matches(sectionHeadingSelector) ||
+            sibling.querySelector?.(sectionHeadingSelector)),
+      );
+      if (!hasSiblingHeading) continue;
+
+      const frame = parent.parentElement;
+      return frame && frame.children.length === 1 && !frame.matches(sectionBoundarySelector)
+        ? frame
+        : parent;
+    }
+    return null;
+  }
+
   function getHideTarget(element) {
     return (
+      getSectionHideTarget(element) ||
       element.closest(
         "[role='article'], [role='listitem'], [role='dialog'], [role='menu'], [role='region'][aria-label], li",
       ) ||
@@ -53,7 +82,10 @@
     target.classList.add("fcc-hidden");
     target.dataset.fccProcessed = "true";
     target.dataset.fccRule = rule.key;
-    if (!settings.cleanMode) createPlaceholder(target, rule.key);
+    // A whole recommendation section needs no replacement frame or empty gap.
+    if (!settings.cleanMode && rule.key !== "removePeopleYouMayKnow") {
+      createPlaceholder(target, rule.key);
+    }
     return FCC.markCounted(target, rule.key);
   }
 
@@ -158,6 +190,8 @@
     createContentObserver,
     createScanner,
     getHideTarget,
+    getSectionHideTarget,
+    hideTarget,
     shouldSkipMarkedChild,
   });
 })(globalThis);

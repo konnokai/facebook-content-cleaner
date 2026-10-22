@@ -11,7 +11,7 @@
     suggestedGroups: ["suggested groups", "groups you might like", "推薦社團", "你可能會喜歡的社團"],
     birthdays: ["birthdays", "birthday reminders", "生日", "生日提醒"],
     notifications: ["notifications", "通知"],
-    people: ["people you may know", "你可能認識的人"],
+    people: ["people you may know", "你可能認識的人", "你可能認識的朋友"],
     friendReel: ["friend's reel", "reel from a friend", "好友的連續短片", "朋友的連續短片"],
   });
 
@@ -75,11 +75,14 @@
     );
     const path = normalizeText(locationLike && locationLike.pathname);
     const isNavigation = Boolean(element.closest("nav, [role='navigation']"));
+    // 通知項目常帶「生日」「連續短片」之類的字，不排除的話整個通知彈出層會被當成區塊藏掉。
+    const isInDialog = Boolean(element.closest("[role='dialog'], [role='menu']"));
 
     return {
       role,
       path,
       isNavigation,
+      isInDialog,
       text: normalizeText(element.textContent),
       headerText,
       labels: labelsFound,
@@ -107,6 +110,7 @@
   function semanticSection(signals, sectionLabels) {
     return (
       !signals.isArticle &&
+      !signals.isInDialog &&
       (hasPhrase(signals.headerText, sectionLabels) ||
         listHasPhrase(signals.labels, sectionLabels))
     );
@@ -119,6 +123,7 @@
       matches(signals, settings) {
         const reel =
           !signals.isNavigation &&
+          !signals.isInDialog &&
           (signals.hasReelLink ||
             semanticSection(signals, labels.reels) ||
             listHasPhrase(signals.labels, labels.reels));
@@ -141,7 +146,8 @@
       matches(signals) {
         return (
           semanticSection(signals, labels.suggestedGroups) ||
-          signals.hrefs.some((href) => /\/groups\/(?:discover|suggestions)/.test(href))
+          (!signals.isInDialog &&
+            signals.hrefs.some((href) => /\/groups\/(?:discover|suggestions)/.test(href)))
         );
       },
     },
@@ -151,7 +157,7 @@
       matches(signals) {
         return (
           semanticSection(signals, labels.birthdays) ||
-          signals.hrefs.some((href) => /\/events\/birthdays/.test(href))
+          (!signals.isInDialog && signals.hrefs.some((href) => /\/events\/birthdays/.test(href)))
         );
       },
     },

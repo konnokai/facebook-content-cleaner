@@ -45,6 +45,7 @@ function parseFixtures(source) {
       hrefs,
       isArticle: FCC.normalizeText(attribute(outerAttributes, "role")) === "article",
       isDialog: ["dialog", "menu"].includes(FCC.normalizeText(attribute(outerAttributes, "role"))),
+      isInDialog: ["dialog", "menu"].includes(FCC.normalizeText(attribute(outerAttributes, "role"))),
       hasReelLink: hrefs.some(
         (href, index) =>
           /\/reels?(?:\/|\?|$)/.test(href) &&
@@ -86,10 +87,77 @@ test("friends' Reels can be retained", () => {
   assert.equal(FCC.findMatchingRule(positive.get("friendReel"), settings), null);
 });
 
+test("section and Reels rules ignore labels and links inside a notifications dialog", () => {
+  for (const ruleKey of [
+    "removeReels",
+    "removeStories",
+    "removeSuggestedGroups",
+    "removeBirthdayReminders",
+    "removePeopleYouMayKnow",
+  ]) {
+    assert.equal(
+      FCC.findMatchingRule(negative.get("sectionLabelsInNotifications"), settingsFor(ruleKey)),
+      null,
+      ruleKey,
+    );
+  }
+});
+
 test("the same node is counted once", () => {
   const target = { dataset: {} };
   assert.equal(FCC.markCounted(target, "removeSponsored"), true);
   assert.equal(FCC.markCounted(target, "removeSponsored"), false);
+});
+
+test("people recommendation sections do not leave a replacement frame", () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = { activeElement: null };
+  const target = {
+    dataset: {},
+    contains: () => false,
+    classList: { add: () => undefined },
+    insertAdjacentElement: () => assert.fail("unexpected replacement frame"),
+  };
+
+  try {
+    assert.equal(
+      FCC.hideTarget(
+        target,
+        { key: "removePeopleYouMayKnow", stat: "other" },
+        { cleanMode: false },
+      ),
+      true,
+    );
+    assert.equal(target.dataset.fccRule, "removePeopleYouMayKnow");
+  } finally {
+    if (previousDocument === undefined) delete globalThis.document;
+    else globalThis.document = previousDocument;
+  }
+});
+
+test("semantic sections hide their exclusive outer card", () => {
+  const node = () => ({
+    children: [],
+    parentElement: null,
+    matches: () => false,
+    querySelector: () => null,
+  });
+  const append = (parent, ...children) => {
+    parent.children.push(...children);
+    for (const child of children) child.parentElement = parent;
+    return parent;
+  };
+  const region = node();
+  region.matches = (selector) => selector === "[role='region'][aria-label]";
+  const content = append(node(), region);
+  const heading = node();
+  heading.matches = (selector) => selector.includes("header");
+  const section = append(node(), heading, content);
+  const frame = append(node(), section);
+
+  assert.equal(FCC.getSectionHideTarget(region), frame);
+  append(frame, node());
+  assert.equal(FCC.getSectionHideTarget(region), section);
 });
 
 test("a settings change affects the next match immediately", () => {

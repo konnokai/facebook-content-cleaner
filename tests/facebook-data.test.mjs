@@ -22,21 +22,44 @@ function suggestedProfileFixture(name) {
   );
   assert.ok(match, `Missing fixture: ${name}`);
   const pathname = match[1].match(/data-path="([^"]+)"/i)?.[1] || "";
-  const href = match[2].match(/href="([^"]+)"/i)?.[1] || "";
-  const action = match[2].match(/<button[^>]*>([^<]+)<\/button>/i)?.[1] || "";
-  const profile = {
-    querySelectorAll(selector) {
-      if (selector === "a[href]") {
-        return [{ pathname: new URL(href, "https://www.facebook.com").pathname }];
-      }
-      return selector === "[role='button']" ? [{ textContent: action }] : [];
+  const profileMatches = [
+    ...match[2].matchAll(
+      /<(header|div)([^>]*data-ad-rendering-role="profile_name"[^>]*)>([\s\S]*?)<\/\1>/gi,
+    ),
+  ];
+  const profiles = (profileMatches.length ? profileMatches : [[null, "header", "", match[2]]]).map(
+    ([, tag, , source]) => {
+      const links = [...source.matchAll(/<a\b[^>]*href="([^"]+)"[^>]*>/gi)].map(
+        ([, href]) => ({ pathname: new URL(href, "https://www.facebook.com").pathname }),
+      );
+      const actions = [
+        ...source.matchAll(/<(button|a)\b[^>]*>([\s\S]*?)<\/\1>/gi),
+      ].map(([, actionTag, content]) => ({
+        tag: actionTag.toLowerCase(),
+        textContent: content.replace(/<[^>]+>/g, "").trim(),
+      }));
+
+      return {
+        tag: tag.toLowerCase(),
+        querySelectorAll(selector) {
+          if (selector === "a[href]") return links;
+          if (selector === "header") return [];
+          if (selector === "a") return actions.filter((action) => action.tag === "a");
+          if (selector === "button") return actions.filter((action) => action.tag === "button");
+          return selector === "[role='button']"
+            ? actions.filter((action) => action.tag === "button")
+            : [];
+        },
+      };
     },
-  };
+  );
 
   return {
     element: {
-      querySelectorAll: (selector) =>
-        selector === "[data-ad-rendering-role='profile_name']" ? [profile] : [],
+      querySelectorAll: (selector) => {
+        if (selector === "[data-ad-rendering-role='profile_name']") return profiles;
+        return selector === "header" ? profiles.filter((profile) => profile.tag === "header") : [];
+      },
     },
     location: { pathname },
   };
@@ -107,6 +130,12 @@ test("ignores follow actions on posts from the group currently open", () => {
   const groupPost = suggestedProfileFixture("suggested-profile-negative");
 
   assert.equal(hasSuggestedProfileAction(suggested.element, suggested.location), true);
+  assert.equal(hasSuggestedProfileAction(groupPost.element, groupPost.location), false);
+});
+
+test("ignores join actions from a nested shared post on the homepage", () => {
+  const groupPost = suggestedProfileFixture("group-post-with-shared-group");
+
   assert.equal(hasSuggestedProfileAction(groupPost.element, groupPost.location), false);
 });
 

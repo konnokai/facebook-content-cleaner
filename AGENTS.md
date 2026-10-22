@@ -13,6 +13,7 @@
 - `src/background.js` 是 Service Worker，負責 runtime message 與 `chrome.storage.local` 寫入。設定更新、統計增加與重設都必須經過現有 `writeQueue`，否則並行 read-modify-write 會遺失資料。
 - `src/content/rules.js` 集中所有偵測規則；`src/content/observer.js` 負責動態 DOM 掃描、隱藏、恢復與計數；`src/content/index.js` 負責啟動和即時設定更新。`sponsored`、`suggested` 的 Facebook marker 優先於一般區塊規則，已標記卡片內的子候選不可重新恢復父卡片。
 - Reel 規則必須保留 navigation 排除，不能因 `/reel` 連結隱藏 Facebook 頂部導覽。
+- Reels、限時動態、推薦社團、生日提醒、你可能認識的人這些規則不比對 `dialog`、`menu` 和它們裡面的元素；通知項目常帶「生日」「連續短片」等字樣或 `/reel` 連結，彈出層只交給 `removeNotifications` 處理。
 
 ## 修改規則
 

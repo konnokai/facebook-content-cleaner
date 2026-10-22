@@ -24,12 +24,13 @@
       ...(element?.querySelectorAll("[data-ad-rendering-role='profile_name']") || []),
       ...(element?.querySelectorAll("header") || []),
     ];
-    const hasAction = profiles.some((profile) =>
-      ["[role='button']", "button", "a"].some((selector) =>
-        [...profile.querySelectorAll(selector)].some((action) =>
-          /^(加入|追蹤|join|follow)$/i.test(
-            (action.innerText || action.textContent || "").trim(),
-          ),
+    // Shared posts can contain another profile scope with its own join CTA.
+    const profile = profiles[0];
+    if (!profile) return false;
+    const hasAction = ["[role='button']", "button", "a"].some((selector) =>
+      [...profile.querySelectorAll(selector)].some((action) =>
+        /^(加入|追蹤|join|follow)$/i.test(
+          (action.innerText || action.textContent || "").trim(),
         ),
       ),
     );
@@ -40,12 +41,10 @@
       /^\/groups\/[^/]+/,
     )?.[0];
     if (!currentGroupPath) return true;
-    return !profiles.some((profile) =>
-      [...profile.querySelectorAll("a[href]")].some((link) => {
-        const path = String(link.pathname || "").replace(/\/+$/, "");
-        return path === currentGroupPath || path.startsWith(`${currentGroupPath}/`);
-      }),
-    );
+    return ![...profile.querySelectorAll("a[href]")].some((link) => {
+      const path = String(link.pathname || "").replace(/\/+$/, "");
+      return path === currentGroupPath || path.startsWith(`${currentGroupPath}/`);
+    });
   }
 
   function hasResharedReel(fiber) {
